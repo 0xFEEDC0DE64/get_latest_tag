@@ -1,0 +1,45 @@
+name: Get latest tag
+description: Tries to acquire the hash and name of the most recent tag
+inputs:
+  repo:
+    description: Path to repo
+    required: false
+outputs:
+  tag_hash:
+    description: The hash of the tag
+    value: ${{ steps.get-latest-tag.outputs.tag-hash }}
+  tag_name:
+    description: The name of the tag
+    value: ${{ steps.get-latest-tag.outputs.tag-name }}
+runs:
+  using: composite
+  steps:
+    - id: get-latest-tag
+      run: |
+        if [[ ! -z "${{ inputs.repo }}" ]]
+        then
+          REPO_ARGS=(-C "${{ inputs.repo }}")
+        else
+          REPO_ARGS=()
+        fi
+
+        TAG_HASH="$(git "${REPO_ARGS[@]}" rev-list --tags --max-count=1)"
+        if [[ $? -ne 0 ]] || [[ -z "$TAG_HASH" ]]
+        then
+          echo ERROR getting tag hash failed
+          echo "$TAG_HASH"
+          exit 1
+        fi
+
+        echo "::set-output name=tag-hash::$TAG_HASH"
+
+        TAG_NAME="$(git "${REPO_ARGS[@]}" describe --tags "$TAG_HASH")"
+        if [[ $? -ne 0 ]] || [[ -z "$TAG_NAME" ]]
+        then
+          echo ERROR getting tag name failed
+          echo "$TAG_NAME"
+          exit 1
+        fi
+
+        echo "::set-output name=tag-name::$TAG_NAME"
+      shell: bash
